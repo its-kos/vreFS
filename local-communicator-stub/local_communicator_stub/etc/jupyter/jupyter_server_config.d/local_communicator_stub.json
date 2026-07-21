@@ -1,0 +1,7 @@
+{
+    "ServerApp": {
+        "jpserver_extensions": {
+            "local_communicator_stub": true
+        }
+    }
+}

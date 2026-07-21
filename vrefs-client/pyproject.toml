@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vrefs"
+version = "0.1.0"
+description = "Notebook client for the vreFS personal data lake"
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.28",
+    "fsspec>=2023.1",
+    "s3fs>=2023.1",
+    "webdav4[fsspec]>=0.9",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["vrefs"]
