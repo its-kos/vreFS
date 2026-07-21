@@ -10,8 +10,7 @@ automatically, and can be accessed uniformly from a notebook with a single
 function call, regardless of which backend it actually lives on.
 
 This repository contains the full working prototype developed as part of an
-MSc thesis: *vreFS: A Personal Data Lake for NaaVRE* (Konstantinos Katserelis,
-Vrije Universiteit Amsterdam / University of Amsterdam).
+MSc thesis: *vreFS: A Personal Data Lake for NaaVRE*
 
 ## Components
 
@@ -24,10 +23,8 @@ Vrije Universiteit Amsterdam / University of Amsterdam).
 
 ## Architecture
 
-vreFS runs inside a NaaVRE Virtual Lab, using PostgreSQL/PostGIS, MinIO,
-Celery, and Keycloak already provided by that platform. The design and
-implementation are documented in full in the accompanying thesis; the
-short version:
+This vreFS mock runs inside a NaaVRE Virtual Lab simulated docker compose instance, using PostgreSQL/PostGIS, MinIO,
+Celery, and Keycloak already provided by that platform. The design and implementation are documented in full in the accompanying thesis.
 
 - **Client layer** — the JupyterLab panel (routed through NaaVRE's
   communicator) and the `vrefs` notebook client (calling the REST API
@@ -37,7 +34,7 @@ short version:
   scores, minting PIDs, and abstracting over heterogeneous storage backends
   via `fsspec`.
 - **Infrastructure layer** — provided by the NaaVRE platform (PostgreSQL,
-  MinIO, Keycloak); not something vreFS itself manages.
+  MinIO, Keycloak). 
 
 ## Getting started (local development)
 
@@ -65,10 +62,20 @@ docker-compose exec service python manage.py migrate
 
 ### 2. Start the frontend
 
+First-time setup (only needed once):
+ 
 ```bash
 cd NaaVRE-datalake-jupyterlab
-jlpm run watch      # terminal 1 — auto-recompiles on save
-jupyter lab          # terminal 2 — opens JupyterLab
+python -m venv .venv
+source .venv/bin/activate
+pip install --editable "."
+jupyter labextension develop . --overwrite
+```
+ 
+Then, every time you want to work on it:
+ 
+```bash
+jupyter lab 
 ```
 
 The vreFS panel appears in JupyterLab's left sidebar.
@@ -98,7 +105,3 @@ cross-researcher authorization for a true independent file copy on import,
 Vault-based credential management, and size-aware workflow staging. These
 gaps, and the reasoning behind them, are documented in full in the thesis's
 Limitations chapter.
-
-## License
-
-See [LICENSE](./LICENSE).
