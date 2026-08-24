@@ -14,12 +14,12 @@ MSc thesis: *vreFS: A Personal Data Lake for NaaVRE*
 
 ## Components
 
-| Component | Description |
-|---|---|
-| `NaaVRE-datalake-service` | The backend: a Django REST Framework service exposing the catalogue API, FAIR scoring, PID minting, and backend adapters. |
-| `NaaVRE-datalake-jupyterlab` | The frontend: a JupyterLab panel extension for registering backends, browsing datasets, editing metadata, and discovering/subscribing to other researchers' published lakes. |
-| `vrefs-client` | A small Python package for accessing datasets directly from a notebook cell (`vrefs.get(pid)`, `vrefs.info(pid)`). |
-| `local-communicator-stub` | A local development stand-in for NaaVRE's own communicator extension, injecting a fake JWT so the frontend can be exercised without a real NaaVRE deployment. Not used in production. |
+| Component                    | Description                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NaaVRE-datalake-service`    | The backend: a Django REST Framework service exposing the catalogue API, FAIR scoring, PID minting, and backend adapters.                                                             |
+| `NaaVRE-datalake-jupyterlab` | The frontend: a JupyterLab panel extension for registering backends, browsing datasets, editing metadata, and discovering/subscribing to other researchers' published lakes.          |
+| `vrefs-client`               | A small Python package for accessing datasets directly from a notebook cell (`vrefs.get(pid)`, `vrefs.info(pid)`).                                                                    |
+| `local-communicator-stub`    | A local development stand-in for NaaVRE's own communicator extension, injecting a fake JWT so the frontend can be exercised without a real NaaVRE deployment. Not used in production. |
 
 ## Architecture
 
@@ -43,53 +43,39 @@ Virtual Lab, since one was not available during this project.
 `DISABLE_AUTH=true` accepts a fixed fake JWT instead of a real
 Keycloak-issued token.
 
-### 1. Start the backend
+Run `startup.sh`, included in this repository, to bring up the
+entire local environment, conda environment, backend containers,
+database readiness, the communicator stub, the frontend extension, the
+notebook client, and JupyterLab itself:
 
 ```bash
 cd NaaVRE-datalake-service
-cp .env.example .env   # defaults are fine for local development
-docker-compose up
+./startup.sh
 ```
 
-This starts four containers: PostgreSQL/PostGIS, Redis, MinIO, and the
-Django service (on `localhost:8000`).
-
-In a second terminal, run migrations once:
+Safe to re-run at any point, every step checks current state first and
+skips work already done. Override the repo location if the four
+component repos aren't cloned as siblings under the same parent
+directory:
 
 ```bash
-docker-compose exec service python manage.py migrate
+VREFS_ROOT=/path/to/parent/dir ./startup.sh
 ```
 
-### 2. Start the frontend
+### Testing specific flows
 
-First-time setup (only needed once):
- 
-```bash
-cd NaaVRE-datalake-jupyterlab
-python -m venv .venv
-source .venv/bin/activate
-pip install --editable "."
-jupyter labextension develop . --overwrite
-```
- 
-Then, every time you want to work on it:
- 
-```bash
-jupyter lab 
-```
+See `NaaVRE-datalake-service/scripts/` for ready-to-run scripts
+covering multi-backend registration and the full
+publish/discover/subscribe/import collaboration flow between two
+simulated researcher identities, useful for demonstrating or
+re-verifying specific behaviour without going through the UI by hand.
 
-The vreFS panel appears in JupyterLab's left sidebar.
+### Tearing down
 
-### 3. Install the notebook client
-
-```bash
-pip install -e ./vrefs-client
-```
-
-```python
-import vrefs
-f = vrefs.get("dl:your-dataset-uuid")
-```
+See `NaaVRE-datalake-service/teardown.sh` for a full, safe reset,
+containers, volumes, built images, and (optionally) the conda
+environment itself, useful before testing a genuinely from-scratch
+setup.
 
 ## Current implementation status
 
