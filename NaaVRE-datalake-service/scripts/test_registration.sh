@@ -15,7 +15,40 @@ TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJwcmVmZXJy
 LOCAL_PATH="$HOME/vrefs-test/local-backend"      # a folder with a couple of files
 GITHUB_REPO="https://github.com/its-kos/vreFS"    # any public repo with files
 GITHUB_BRANCH="main"
-S3_BUCKET="exp1-test-bucket"                       # a bucket already populated in MinIO
+S3_BUCKET="exp1-test-bucket"                       # created automatically below if missing
+
+echo "=== Ensuring S3 test bucket and test files exist ==="
+python3 -c "import boto3" 2>/dev/null || pip install boto3 --quiet
+
+python3 - <<PYEOF
+import boto3
+import io
+
+s3 = boto3.client(
+    "s3",
+    endpoint_url="http://localhost:9000",
+    aws_access_key_id="minioadmin",
+    aws_secret_access_key="minioadmin",
+)
+
+bucket = "$S3_BUCKET"
+
+existing = [b["Name"] for b in s3.list_buckets().get("Buckets", [])]
+if bucket not in existing:
+    s3.create_bucket(Bucket=bucket)
+    print(f"  Created bucket: {bucket}")
+else:
+    print(f"  Bucket already exists: {bucket}")
+
+objects = s3.list_objects_v2(Bucket=bucket).get("Contents", [])
+if not objects:
+    s3.put_object(Bucket=bucket, Key="sample1.csv", Body=b"a,b,c\n1,2,3\n4,5,6\n")
+    s3.put_object(Bucket=bucket, Key="sample2.txt", Body=b"Test file for vreFS registration testing.\n")
+    print("  Uploaded 2 test files (sample1.csv, sample2.txt)")
+else:
+    print(f"  Bucket already has {len(objects)} object(s), leaving as is")
+PYEOF
+echo ""
 
 register_and_index() {
   local NAME=$1
@@ -24,25 +57,25 @@ register_and_index() {
 
   echo "=== Registering $NAME ($TYPE) ==="
 
-  RESPONSE=$(curl -s -X POST "$API/storage-backends/" \
+  RESPONSE=$(curl -s --max-time 15 -X POST "$API/storage-backends/" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
-    -d "{\"name\": \"$NAME\", \"backend_type\": \"$TYPE\", $EXTRA}")
+    -d "{\"name\": \"$NAME\", \"backend_type\": \"$TYPE\", $EXTRA}" || echo '{"__curl_failed__": true}')
 
-  BACKEND_ID=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['id'])" "$RESPONSE" 2>/dev/null)
+  BACKEND_ID=$(python3 -c "import json,sys; print(json.loads(sys.argv[1]).get('id',''))" "$RESPONSE" 2>/dev/null)
 
   if [ -z "$BACKEND_ID" ]; then
-    echo "  Registration failed: $RESPONSE"
+    echo "  Registration failed or timed out: $RESPONSE"
     return
   fi
   echo "  backend_id=$BACKEND_ID"
 
-  INDEX_RESULT=$(curl -s -X POST "$API/storage-backends/$BACKEND_ID/index/" \
-    -H "Authorization: Bearer $TOKEN")
+  INDEX_RESULT=$(curl -s --max-time 30 -X POST "$API/storage-backends/$BACKEND_ID/index/" \
+    -H "Authorization: Bearer $TOKEN" || echo '{"__curl_failed__": true}')
   echo "  $INDEX_RESULT"
 
   sleep 2
-  DATASETS=$(curl -s "$API/datasets/?backend=$BACKEND_ID" -H "Authorization: Bearer $TOKEN")
+  DATASETS=$(curl -s --max-time 15 "$API/datasets/?backend=$BACKEND_ID" -H "Authorization: Bearer $TOKEN" || echo '{"__curl_failed__": true}')
   echo "  datasets: $DATASETS" | head -c 400
   echo ""
   echo ""
